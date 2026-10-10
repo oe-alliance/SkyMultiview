@@ -87,13 +87,13 @@ class MVhelpers:
 		for sResult in epgSearch(": multiview"):  # OUTER LOOP: find all valid 'multiview overviews', not 'multiview hints'
 			mvId, sNameLow = getMvType(sResult[3]), sResult[6].lower()
 			if not mvId or "sky" not in sNameLow or not isMVchannel(sNameLow):  # skip on non-multiview overwies or non-sky-sport channels
-				break
+				continue
 			mvDict = createMultiview(mvId, sResult)
 			mvId, mvStart = mvDict.get("mvId", 0), mvDict.get("mvStart", 0)
 			for channelFound in epgSearch(f"{mvId}:"):  # INNER LOOP: find the individual broadcasts associated with the 'mvId'
 				start, title, sNameLow = channelFound[1], channelFound[3], channelFound[6].lower()
 				if "sky" not in sNameLow:
-					break  # skip non-sky channels
+					continue  # skip non-sky channels
 				if start >= mvStart and start - mvStart <= 1800 and len(title.split(":")) < 3:
 					if f"{mvId}:" in title and "multiview" not in title.lower() and (title, start) not in foundEvents:
 						foundEvents.append((title, start))
@@ -191,7 +191,7 @@ class MVmain(Screen, MVhelpers):
 		self.exitTimer = eTimer()
 		self.exitTimer.callback.append(self.hideExitText)
 		self.positions = self.readPositionsFile()
-		self.onLayoutFinish.append(self.startMain)
+		self.onFirstExecBegin.append(self.startMain)  # session.open() is not allowed before exec
 
 	def startMain(self):
 		abort = True
@@ -218,8 +218,13 @@ class MVmain(Screen, MVhelpers):
 					self.showColorKeys()
 					self.showCursor(self.currCursorIndex)
 		if abort:
-			self.session.open(MessageBox, "ABBRUCH: Es konnten keine Einzelsendungen zugeordnet werden. Bitte EPG-Daten löschen und frisch auffüllen.", type=MessageBox.TYPE_ERROR, timeout=10, close_on_any_key=True)
-			self.escape()
+			self.session.openWithCallback(self.abortClosed, MessageBox, "ABBRUCH: Es konnten keine Einzelsendungen zugeordnet werden. Bitte EPG-Daten löschen und frisch auffüllen.", type=MessageBox.TYPE_ERROR, timeout=10, close_on_any_key=True)
+		elif not self.positions:
+			posFile = join(mvglobals.PLUGINPATH, "mvcursorpos.cfg")
+			self.session.open(MessageBox, f"ABBRUCH: Die Datei\n'{posFile}'\nkonnte nicht gefunden werden", type=MessageBox.TYPE_ERROR, timeout=10, close_on_any_key=True)
+
+	def abortClosed(self, answer=None):
+		self.escape()
 
 	def readPositionsFile(self):
 		posList = []
@@ -232,8 +237,6 @@ class MVmain(Screen, MVhelpers):
 						continue  # skip comments
 					columns = [item.replace("(", "").replace(")", "").strip() for item in line.split(":")[1].split(";")] if ":" in line else []
 					posList.append(tuple(tuple(int(int(value.strip()) * (1.5 if mvglobals.RESOLUTION == "FHD" else 1.0)) for value in item.split(",")) for item in columns))
-		else:
-			self.session.open(MessageBox, f"ABBRUCH: Die Datei\n'{posFile}'\nkonnte nicht gefunden werden", type=MessageBox.TYPE_ERROR, timeout=10, close_on_any_key=True)
 		return posList
 
 	def getMVevents(self, tupleId):
