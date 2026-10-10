@@ -113,7 +113,7 @@ class MVhelpers:
 
 class MVmain(Screen, MVhelpers):
 	skin = """
-	<screen name="MVmain" position="0,0" size="1280,720" resolution="1280,720" title="Sky Multiview" backgroundColor="#FF000000">
+	<screen name="MVmain" position="0,0" size="1280,720" resolution="1280,720" flags="wfNoBorder" title="Sky Multiview" backgroundColor="#FF000000">
 		<widget source="audiotext" render="Label" position="0,0" size="600,30" valign="top" halign="center" font="Regular;24" textBorderColor="#00505050" textBorderWidth="1" foregroundColor="#00ffff00" backgroundColor="#16000000" transparent="1">
 			<convert type="ConditionalShowHide" />
 		</widget>
